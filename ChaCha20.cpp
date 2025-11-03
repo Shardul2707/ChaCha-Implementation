@@ -6,6 +6,8 @@
 #include <random>
 #include <chrono>
 #define rounds 1
+#define n 1<<20
+uint32_t state[16];
 
 // Bitwise Rotate Left Function
 uint32_t bit_rl(uint32_t value, int shift) {
@@ -39,9 +41,11 @@ void chacha_block(const uint32_t state[16], uint32_t output[16]) {
             QR(output[3], output[4], output[9], output[14]);
         }
     }
-    // for (int i = 0; i < 16; ++i) {
-    //     output[i] += state[i];
-    // }
+
+    //Final Ciphertext
+    for (int i = 0; i < 16; ++i) {
+        output[i] += state[i];
+    }
 }
 
 // Bitwise Rotate Right Function
@@ -58,18 +62,25 @@ void QR_inverse(uint32_t &a, uint32_t &b, uint32_t &c, uint32_t &d) {
 }
 
 int main() {
-    //std::srand(std::time(0)); // Seed random generator
-    uint32_t state[16];
-    // Generate random initial state
+    // RNG
     std::random_device rd;
-    unsigned seed = rd() ^ std::chrono::system_clock::now().time_since_epoch().count();
-    std::mt19937 gen(seed);
-    std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFF);
+    unsigned seed = rd() ^ (unsigned)std::chrono::system_clock::now().time_since_epoch().count();
+    std::mt19937_64 gen(seed);
+    std::uniform_int_distribution<uint32_t> dis(0, 0xFFFFFFFFu);
+    uint64_t matches = 0;
 
-    for (int i = 0; i < 16; ++i) {
-        state[i] = 0;
-    }
-    state[12] = 1;
+    // Coefficients for ChaCha20
+    const uint32_t C0 = 0x61707865;
+    const uint32_t C1 = 0x3320646e;
+    const uint32_t C2 = 0x79622d32;
+    const uint32_t C3 = 0x6b206574;
+
+    for (uint64_t t = 0; t < n; ++t) {
+        for (int i = 0; i < 16; ++i) state[i] = dis(gen);
+        state[0] = C0;
+        state[1] = C1;
+        state[2] = C2;
+        state[3] = C3;
 
     std::cout << "Randomly generated initial state:" << std::endl;
     for (int i = 0; i < 16; ++i) {
@@ -92,9 +103,9 @@ int main() {
     }
 
     // Reverse addition step
-    // for (int i = 0; i < 16; ++i) {
-    //     output[i] -= state[i];
-    // }
+    for (int i = 0; i < 16; ++i) {
+        output[i] -= state[i];
+    }
 
     // Reverse rounds
     for (int i = rounds - 1; i >= 0; --i) {
@@ -122,4 +133,5 @@ int main() {
     }
 
     return 0;
+
 }
